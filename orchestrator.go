@@ -362,6 +362,18 @@ func (o *Orchestrator) processFile(path string, validPatterns map[string]bool) f
 			deduped = append(deduped, f)
 		}
 	}
+
+	// h. Filter by minimum confidence level
+	if o.config.MinConfidence > 0 {
+		var confFiltered []types.Finding
+		for _, f := range deduped {
+			if f.Confidence >= o.config.MinConfidence {
+				confFiltered = append(confFiltered, f)
+			}
+		}
+		deduped = confFiltered
+	}
+
 	result.findings = deduped
 	return result
 }

@@ -206,6 +206,7 @@ func (t *TextReporter) renderFindings(sb *strings.Builder, report *Report) {
 			sevColor, severityString(f.Severity), colorReset,
 			r.ID, r.Name))
 		sb.WriteString(fmt.Sprintf("    %sFile:%s %s:%d\n", colorDim, colorReset, f.FilePath, f.Line))
+		sb.WriteString(fmt.Sprintf("    %sConfidence:%s %s\n", colorDim, colorReset, confidenceString(f.Confidence)))
 
 		if f.Explanation != "" {
 			sb.WriteString(fmt.Sprintf("    %sExplanation:%s %s\n", colorDim, colorReset, f.Explanation))

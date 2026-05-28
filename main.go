@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/alpardfm/cost-efficient-go/types"
 )
 
 const usage = `go-cost-analyzer - Analyze Go projects for cost-efficiency anti-patterns
@@ -23,6 +25,7 @@ Flags:
       --include-tests  Include *_test.go files (default: false)
       --scale          Impact scale: "1M", "10M", "100M" (default: "1M")
       --diff           Only analyze files changed vs this branch (e.g., main)
+      --min-confidence  Minimum confidence: "low", "medium", "high" (default: "low")
 
 Examples:
   go-cost-analyzer ./my-project
@@ -64,7 +67,9 @@ func main() {
 	flag.StringVar(&exclude, "exclude", "", "Comma-separated additional dirs to exclude")
 	flag.BoolVar(&includeTests, "include-tests", false, "Include *_test.go files")
 	flag.StringVar(&scale, "scale", "1M", `Impact scale: "1M", "10M", "100M"`)
+	var minConfidence string
 	flag.StringVar(&diffBase, "diff", "", "Only analyze files changed vs this branch (e.g., main)")
+	flag.StringVar(&minConfidence, "min-confidence", "low", `Minimum confidence level: "low", "medium", "high"`)
 
 	flag.Usage = func() {
 		fmt.Print(usage)
@@ -121,6 +126,17 @@ func main() {
 		}
 	}
 
+	// Parse --min-confidence
+	var confLevel types.Confidence
+	switch minConfidence {
+	case "high":
+		confLevel = types.ConfidenceHigh
+	case "medium":
+		confLevel = types.ConfidenceMedium
+	default:
+		confLevel = types.ConfidenceLow
+	}
+
 	// Build AnalysisConfig
 	config := AnalysisConfig{
 		ScanConfig: ScanConfig{
@@ -128,16 +144,17 @@ func main() {
 			ExcludeDirs:  excludeList,
 			IncludeTests: includeTests,
 		},
-		RootPath:     rootPath,
-		Format:       format,
-		Verbose:      verbose,
-		Patterns:     patternList,
-		Threshold:    threshold,
-		Exclude:      excludeList,
-		IncludeTests: includeTests,
-		Scale:        scale,
-		OutputFile:   output,
-		DiffBase:     diffBase,
+		RootPath:      rootPath,
+		Format:        format,
+		Verbose:       verbose,
+		Patterns:      patternList,
+		Threshold:     threshold,
+		Exclude:       excludeList,
+		IncludeTests:  includeTests,
+		Scale:         scale,
+		OutputFile:    output,
+		DiffBase:      diffBase,
+		MinConfidence: confLevel,
 	}
 
 	// Load project config file

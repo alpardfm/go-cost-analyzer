@@ -46,6 +46,7 @@ type jsonFinding struct {
 	SuggestedFix string `json:"suggested_fix"`
 	CodeContext  string `json:"code_context"`
 	Reference    string `json:"reference"`
+	Confidence   string `json:"confidence"`
 }
 
 // --- JSONReporter ---
@@ -107,6 +108,7 @@ func (r *JSONReporter) Render(report *Report) ([]byte, error) {
 				Explanation:  f.Explanation,
 				SuggestedFix: f.SuggestedFix,
 				CodeContext:  f.CodeContext,
+				Confidence:   confidenceString(f.Confidence),
 			}
 			// Add reference link from Rule if available
 			if len(p.Rule.ReferenceLinks) > 0 {
@@ -150,5 +152,17 @@ func categoryString(c types.Category) string {
 		return "ErrorHandling"
 	default:
 		return "Unknown"
+	}
+}
+
+// confidenceString converts a types.Confidence to its string representation.
+func confidenceString(c types.Confidence) string {
+	switch c {
+	case types.ConfidenceHigh:
+		return "high"
+	case types.ConfidenceMedium:
+		return "medium"
+	default:
+		return "low"
 	}
 }

@@ -1,5 +1,7 @@
 package main
 
+import "github.com/alpardfm/cost-efficient-go/types"
+
 // AnalysisConfig holds all configuration for a single analysis run.
 type AnalysisConfig struct {
 	ScanConfig
@@ -15,4 +17,5 @@ type AnalysisConfig struct {
 	Scale           string            // Impact projection scale (e.g., "1M", "10M", "100M")
 	OutputFile      string            // Output file path (empty = stdout)
 	DiffBase        string            // Base branch for diff mode (empty = analyze all)
+	MinConfidence   types.Confidence  // Minimum confidence level to report
 }
