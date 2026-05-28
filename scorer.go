@@ -34,6 +34,14 @@ var SeverityWeight = map[types.Severity]int{
 	types.Minor:    1,
 }
 
+// ScoreFloor defines the minimum score contribution per severity.
+// This prevents low-severity patterns with many findings from destroying the overall score.
+var ScoreFloor = map[types.Severity]int{
+	types.Critical: 0,  // No floor — critical issues should fully impact score
+	types.Major:    0,  // No floor — major issues should fully impact score
+	types.Minor:    50, // Minor patterns can't contribute less than 50 to weighted average
+}
+
 // CalculatePatternScore computes the score for a single pattern result.
 // Score = (OptimalCount / TotalOccurrences) * 100.
 // If TotalOccurrences == 0, the pattern is marked NotApplicable with Score = 0.
@@ -51,6 +59,8 @@ func CalculatePatternScore(result *PatternResult) {
 // Patterns where NotApplicable == true are excluded.
 // Returns -1 if no applicable patterns remain (represents N/A).
 // Weight is determined by SeverityWeight (Critical=3, Major=2, Minor=1).
+// ScoreFloor is applied per severity to prevent low-severity patterns from
+// disproportionately impacting the overall score.
 func CalculateOverallScore(patterns []PatternResult) int {
 	var weightedSum int
 	var totalWeight int
@@ -60,7 +70,12 @@ func CalculateOverallScore(patterns []PatternResult) int {
 			continue
 		}
 		weight := SeverityWeight[p.Rule.Severity]
-		weightedSum += p.Score * weight
+		score := p.Score
+		// Apply score floor per severity
+		if floor, ok := ScoreFloor[p.Rule.Severity]; ok && score < floor {
+			score = floor
+		}
+		weightedSum += score * weight
 		totalWeight += weight
 	}
 

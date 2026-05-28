@@ -29,6 +29,7 @@ func (t *TextReporter) Render(report *Report) ([]byte, error) {
 
 	t.renderHeader(&sb, report)
 	t.renderOverallScore(&sb, report)
+	t.renderSummary(&sb, report)
 	t.renderPatternTable(&sb, report)
 	t.renderFindings(&sb, report)
 	t.renderDisclaimer(&sb, report)
@@ -66,6 +67,60 @@ func (t *TextReporter) renderOverallScore(sb *strings.Builder, report *Report) {
 		color := scoreColor(report.OverallScore)
 		sb.WriteString(fmt.Sprintf("  Score: %s%s%d/100%s\n", color, colorBold, report.OverallScore, colorReset))
 	}
+	sb.WriteString("\n")
+}
+
+// renderSummary writes a summary section with key stats.
+func (t *TextReporter) renderSummary(sb *strings.Builder, report *Report) {
+	// Count stats
+	totalFindings := 0
+	patternsWithFindings := 0
+	for _, p := range report.Patterns {
+		if len(p.Findings) > 0 {
+			patternsWithFindings++
+			totalFindings += len(p.Findings)
+		}
+	}
+
+	sb.WriteString(fmt.Sprintf("%s── Summary ──%s\n", colorBold, colorReset))
+	sb.WriteString(fmt.Sprintf("  Patterns checked: %d | With findings: %d\n", len(report.Patterns), patternsWithFindings))
+	sb.WriteString(fmt.Sprintf("  Total findings: %d\n", totalFindings))
+
+	if totalFindings > 0 {
+		sb.WriteString(fmt.Sprintf("  %sTop issues:%s\n", colorBold, colorReset))
+
+		// Sort patterns by finding count descending, show top 3
+		type patternCount struct {
+			id    string
+			name  string
+			sev   string
+			count int
+		}
+		var counts []patternCount
+		for _, p := range report.Patterns {
+			if len(p.Findings) > 0 {
+				counts = append(counts, patternCount{
+					id:    p.Rule.ID,
+					name:  p.Rule.Name,
+					sev:   severityString(p.Rule.Severity),
+					count: len(p.Findings),
+				})
+			}
+		}
+		sort.Slice(counts, func(i, j int) bool {
+			return counts[i].count > counts[j].count
+		})
+
+		limit := 3
+		if len(counts) < limit {
+			limit = len(counts)
+		}
+		for i := 0; i < limit; i++ {
+			c := counts[i]
+			sb.WriteString(fmt.Sprintf("    %d. %s (%s) %s — %d findings\n", i+1, c.id, c.sev, truncate(c.name, 30), c.count))
+		}
+	}
+
 	sb.WriteString("\n")
 }
 

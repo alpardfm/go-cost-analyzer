@@ -77,9 +77,10 @@ func TestCalculateOverallScore_Mixed(t *testing.T) {
 			Score: 40,
 		},
 	}
-	// Weighted: (80*3 + 60*2 + 40*1) / (3+2+1) = (240+120+40)/6 = 400/6 = 66
+	// Minor score 40 is floored to 50 (ScoreFloor for Minor = 50)
+	// Weighted: (80*3 + 60*2 + 50*1) / (3+2+1) = (240+120+50)/6 = 410/6 = 68
 	score := CalculateOverallScore(patterns)
-	expected := 66
+	expected := 68
 	if score != expected {
 		t.Errorf("expected overall score=%d, got %d", expected, score)
 	}

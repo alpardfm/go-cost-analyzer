@@ -7,6 +7,7 @@ import (
 	"go/token"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -260,6 +261,10 @@ func (o *Orchestrator) processFile(path string, validPatterns map[string]bool) f
 		return result
 	}
 
+	// Read source file for code context population
+	sourceBytes, _ := os.ReadFile(path)
+	sourceLines := strings.Split(string(sourceBytes), "\n")
+
 	// b. Check if generated file → skip
 	if IsGeneratedFile(file) {
 		result.skipped = true
@@ -295,6 +300,32 @@ func (o *Orchestrator) processFile(path string, validPatterns map[string]bool) f
 		filtered = append(filtered, f)
 	}
 
-	result.findings = filtered
+	// f. Populate CodeContext for each finding (3 lines: 1 before, the line, 1 after)
+	for i := range filtered {
+		if len(sourceLines) > 0 && filtered[i].Line > 0 && filtered[i].Line <= len(sourceLines) {
+			// Get 1 line before, the line itself, and 1 line after (3 lines context)
+			start := filtered[i].Line - 2 // 0-indexed, 1 line before
+			if start < 0 {
+				start = 0
+			}
+			end := filtered[i].Line + 1 // 1 line after
+			if end > len(sourceLines) {
+				end = len(sourceLines)
+			}
+			filtered[i].CodeContext = strings.Join(sourceLines[start:end], "\n")
+		}
+	}
+
+	// g. Deduplicate findings by (file, line, ruleID)
+	seen := make(map[string]bool)
+	var deduped []types.Finding
+	for _, f := range filtered {
+		key := fmt.Sprintf("%s:%d:%s", f.FilePath, f.Line, f.RuleID)
+		if !seen[key] {
+			seen[key] = true
+			deduped = append(deduped, f)
+		}
+	}
+	result.findings = deduped
 	return result
 }
