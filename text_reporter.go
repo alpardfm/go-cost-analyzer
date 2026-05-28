@@ -171,6 +171,7 @@ func (t *TextReporter) renderPatternTable(sb *strings.Builder, report *Report) {
 }
 
 // renderFindings writes detailed findings sorted by severity.
+// When a pattern has more than 5 findings, groups them by file for readability.
 func (t *TextReporter) renderFindings(sb *strings.Builder, report *Report) {
 	// Collect all findings across patterns
 	type findingWithRule struct {
@@ -189,35 +190,103 @@ func (t *TextReporter) renderFindings(sb *strings.Builder, report *Report) {
 		return
 	}
 
-	// Sort by severity (Critical first)
-	sort.Slice(allFindings, func(i, j int) bool {
-		return allFindings[i].finding.Severity > allFindings[j].finding.Severity
-	})
-
 	sb.WriteString(fmt.Sprintf("%s── Findings ──%s\n", colorBold, colorReset))
 	sb.WriteString("\n")
 
+	// Group findings by pattern
+	patternFindings := make(map[string][]findingWithRule)
+	var patternOrder []string
 	for _, item := range allFindings {
-		f := item.finding
-		r := item.rule
+		id := item.rule.ID
+		if _, exists := patternFindings[id]; !exists {
+			patternOrder = append(patternOrder, id)
+		}
+		patternFindings[id] = append(patternFindings[id], item)
+	}
 
-		sevColor := severityColor(f.Severity)
-		sb.WriteString(fmt.Sprintf("  %s[%s]%s %s %s\n",
-			sevColor, severityString(f.Severity), colorReset,
-			r.ID, r.Name))
-		sb.WriteString(fmt.Sprintf("    %sFile:%s %s:%d\n", colorDim, colorReset, f.FilePath, f.Line))
-		sb.WriteString(fmt.Sprintf("    %sConfidence:%s %s\n", colorDim, colorReset, confidenceString(f.Confidence)))
+	// Sort pattern order by severity (Critical first)
+	sort.Slice(patternOrder, func(i, j int) bool {
+		fi := patternFindings[patternOrder[i]][0]
+		fj := patternFindings[patternOrder[j]][0]
+		return fi.finding.Severity > fj.finding.Severity
+	})
 
-		if f.Explanation != "" {
-			sb.WriteString(fmt.Sprintf("    %sExplanation:%s %s\n", colorDim, colorReset, f.Explanation))
+	const groupThreshold = 5 // Group by file when more than this many findings
+
+	for _, patternID := range patternOrder {
+		findings := patternFindings[patternID]
+		rule := findings[0].rule
+		sevColor := severityColor(rule.Severity)
+
+		if len(findings) > groupThreshold {
+			// Grouped mode: show summary per file
+			sb.WriteString(fmt.Sprintf("  %s[%s]%s %s %s — %d findings\n",
+				sevColor, severityString(rule.Severity), colorReset,
+				rule.ID, rule.Name, len(findings)))
+
+			// Group by file
+			fileFindings := make(map[string][]findingWithRule)
+			var fileOrder []string
+			for _, f := range findings {
+				fp := f.finding.FilePath
+				if _, exists := fileFindings[fp]; !exists {
+					fileOrder = append(fileOrder, fp)
+				}
+				fileFindings[fp] = append(fileFindings[fp], f)
+			}
+
+			// Sort files by finding count descending
+			sort.Slice(fileOrder, func(i, j int) bool {
+				return len(fileFindings[fileOrder[i]]) > len(fileFindings[fileOrder[j]])
+			})
+
+			for _, fp := range fileOrder {
+				ffs := fileFindings[fp]
+				// Collect line numbers
+				var lines []string
+				for _, ff := range ffs {
+					lines = append(lines, fmt.Sprintf("%d", ff.finding.Line))
+				}
+				lineStr := strings.Join(lines, ", ")
+				if len(lines) > 5 {
+					lineStr = strings.Join(lines[:5], ", ") + fmt.Sprintf(" (+%d more)", len(lines)-5)
+				}
+				sb.WriteString(fmt.Sprintf("    %s%s%s: %d occurrences (lines: %s)\n",
+					colorDim, fp, colorReset, len(ffs), lineStr))
+			}
+
+			// Show suggestion once
+			if findings[0].finding.SuggestedFix != "" {
+				sb.WriteString(fmt.Sprintf("    %sFix:%s %s\n", colorDim, colorReset, findings[0].finding.SuggestedFix))
+			}
+			if len(rule.ReferenceLinks) > 0 {
+				sb.WriteString(fmt.Sprintf("    %sRef:%s %s\n", colorDim, colorReset, rule.ReferenceLinks[0]))
+			}
+			sb.WriteString("\n")
+		} else {
+			// Detailed mode: show each finding individually
+			for _, item := range findings {
+				f := item.finding
+				r := item.rule
+
+				sb.WriteString(fmt.Sprintf("  %s[%s]%s %s %s\n",
+					sevColor, severityString(f.Severity), colorReset,
+					r.ID, r.Name))
+				sb.WriteString(fmt.Sprintf("    %sFile:%s %s:%d\n", colorDim, colorReset, f.FilePath, f.Line))
+				sb.WriteString(fmt.Sprintf("    %sConfidence:%s %s\n", colorDim, colorReset, confidenceString(f.Confidence)))
+
+				if f.Explanation != "" {
+					sb.WriteString(fmt.Sprintf("    %sExplanation:%s %s\n", colorDim, colorReset, f.Explanation))
+				}
+				if f.SuggestedFix != "" {
+					sb.WriteString(fmt.Sprintf("    %sSuggested fix:%s %s\n", colorDim, colorReset, f.SuggestedFix))
+				}
+				if len(r.ReferenceLinks) > 0 {
+					sb.WriteString(fmt.Sprintf("    %sReference:%s %s\n", colorDim, colorReset, r.ReferenceLinks[0]))
+				}
+				sb.WriteString("\n")
+			}
 		}
-		if f.SuggestedFix != "" {
-			sb.WriteString(fmt.Sprintf("    %sSuggested fix:%s %s\n", colorDim, colorReset, f.SuggestedFix))
-		}
-		if len(r.ReferenceLinks) > 0 {
-			sb.WriteString(fmt.Sprintf("    %sReference:%s %s\n", colorDim, colorReset, r.ReferenceLinks[0]))
-		}
-		sb.WriteString("\n")
 	}
 }
 

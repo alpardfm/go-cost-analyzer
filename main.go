@@ -165,13 +165,19 @@ func main() {
 	}
 
 	// Merge project config (CLI flags take precedence)
+	// Use flag.Visit to detect which flags were explicitly set by the user
+	flagsSet := make(map[string]bool)
+	flag.Visit(func(f *flag.Flag) {
+		flagsSet[f.Name] = true
+	})
+
 	MergeConfig(&config, projectConfig,
-		exclude != "",    // cliExcludeSet
-		patterns != "",   // cliPatternsSet
-		threshold != 0,   // cliThresholdSet
-		format != "text", // cliFormatSet (non-default means explicitly set)
-		scale != "1M",    // cliScaleSet
-		includeTests,     // cliIncludeTestsSet
+		flagsSet["exclude"],                    // cliExcludeSet
+		flagsSet["patterns"] || flagsSet["p"],  // cliPatternsSet
+		flagsSet["threshold"] || flagsSet["t"], // cliThresholdSet
+		flagsSet["format"] || flagsSet["f"],    // cliFormatSet
+		flagsSet["scale"],                      // cliScaleSet
+		flagsSet["include-tests"],              // cliIncludeTestsSet
 	)
 
 	// Create and run orchestrator
