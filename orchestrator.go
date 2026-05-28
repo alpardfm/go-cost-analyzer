@@ -280,15 +280,19 @@ func (o *Orchestrator) processFile(path string, validPatterns map[string]bool) f
 		allFindings = append(allFindings, findings...)
 	}
 
-	// e. Filter findings through line-level suppression
+	// e. Filter findings through line-level suppression and path-based suppression
 	var filtered []types.Finding
 	for _, f := range allFindings {
-		// Look up the pattern name for suppression check
+		// Check line-level suppression (inline comments)
 		patternName := f.RuleID
-		// Also check by detector name
-		if !suppression.IsSuppressed(f.Line, patternName) {
-			filtered = append(filtered, f)
+		if suppression.IsSuppressed(f.Line, patternName) {
+			continue
 		}
+		// Check path-based suppression (from .cost-analyzer.json)
+		if len(o.config.SuppressRules) > 0 && IsPathSuppressed(path, f.RuleID, o.config.SuppressRules, o.config.RootPath) {
+			continue
+		}
+		filtered = append(filtered, f)
 	}
 
 	result.findings = filtered
