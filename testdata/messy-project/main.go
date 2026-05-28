@@ -19,6 +19,13 @@ func main() {
 		items = append(items, i)
 	}
 
+	// Range-based slice append without pre-allocation (triggers CEG-016)
+	source := []int{1, 2, 3, 4, 5}
+	var copied []int
+	for _, v := range source {
+		copied = append(copied, v)
+	}
+
 	// String concatenation with + in a loop (triggers CEG-017)
 	s := ""
 	for i := 0; i < 100; i++ {
@@ -26,5 +33,5 @@ func main() {
 	}
 
 	p := PoorlyAlignedStruct{A: true, B: 1, C: true, D: 2, E: true, F: 3}
-	fmt.Println(len(items), s, p)
+	fmt.Println(len(items), len(copied), s, p)
 }
