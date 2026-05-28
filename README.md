@@ -1,0 +1,187 @@
+# Go Cost Analyzer
+
+![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat-square&logo=go&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+
+CLI tool that analyzes Go projects for cost-efficiency anti-patterns using AST-based static analysis. Detects 20 patterns across memory, concurrency, I/O, and error handling categories, then produces a scored report with actionable recommendations.
+
+---
+
+## Installation
+
+```bash
+go install github.com/alpardfm/go-cost-analyzer@latest
+```
+
+---
+
+## Usage
+
+```bash
+# Analyze a Go project
+go-cost-analyzer ./my-project
+
+# JSON output for CI/CD
+go-cost-analyzer -f json -o report.json ./my-project
+
+# Filter specific patterns
+go-cost-analyzer -p CEG-016,CEG-017 ./my-project
+
+# Set minimum score threshold (exit 1 if below)
+go-cost-analyzer -t 80 ./my-project
+
+# Include test files in analysis
+go-cost-analyzer --include-tests ./my-project
+
+# Verbose mode (show per-file progress)
+go-cost-analyzer -v ./my-project
+
+# Scale impact projections
+go-cost-analyzer --scale 100M ./my-project
+```
+
+---
+
+## Flags
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| (positional) | | required | Path to Go project |
+| `--output` | `-o` | stdout | Write report to file |
+| `--format` | `-f` | `text` | Output format: `text` or `json` |
+| `--verbose` | `-v` | false | Show per-file progress to stderr |
+| `--patterns` | `-p` | all | Comma-separated pattern filter (IDs or names) |
+| `--threshold` | `-t` | 0 | Minimum score (exit 1 if below) |
+| `--exclude` | | | Additional directories to exclude |
+| `--include-tests` | | false | Include `*_test.go` files |
+| `--scale` | | `1M` | Impact projection scale: `1M`, `10M`, `100M` |
+
+---
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success — score above threshold |
+| 1 | Score below threshold, or invalid input |
+| 2 | Internal error |
+
+---
+
+## Detected Patterns
+
+| ID | Pattern | Category | Severity |
+|----|---------|----------|----------|
+| CEG-001 | Batch Processing | IO | Major |
+| CEG-002 | Caching Strategies | Memory | Major |
+| CEG-003 | Channel Patterns | Concurrency | Minor |
+| CEG-004 | Connection Pooling | IO | Critical |
+| CEG-005 | Context Cancellation | Concurrency | Critical |
+| CEG-006 | Efficient Logging | Memory | Minor |
+| CEG-007 | Error Handling | ErrorHandling | Major |
+| CEG-008 | Goroutine Leak | Concurrency | Critical |
+| CEG-009 | HTTP Client Optimization | IO | Major |
+| CEG-010 | Interface Dispatch | Memory | Minor |
+| CEG-011 | JSON Processing | Memory | Major |
+| CEG-012 | Map Internals | Memory | Minor |
+| CEG-013 | Profiling & Benchmarking | Memory | Minor |
+| CEG-014 | Query Optimization | IO | Critical |
+| CEG-015 | Redis Pipeline | IO | Major |
+| CEG-016 | Slice Pre-allocation | Memory | Major |
+| CEG-017 | String Building | Memory | Major |
+| CEG-018 | Struct Alignment | Memory | Minor |
+| CEG-019 | Sync Pool | Memory | Major |
+| CEG-020 | Worker Pool | Concurrency | Major |
+
+---
+
+## Scoring
+
+Each pattern gets a score (0-100) based on the ratio of optimal vs suboptimal occurrences found. The overall score is a weighted average:
+
+- **Critical** patterns: weight 3
+- **Major** patterns: weight 2
+- **Minor** patterns: weight 1
+
+Patterns with no relevant occurrences are marked "N/A" and excluded from the overall score.
+
+---
+
+## Suppression
+
+Suppress specific findings with inline comments:
+
+```go
+// Suppress a specific pattern on the next line
+//noinspect:CEG-016
+var items []int
+
+// Suppress on the same line
+items = append(items, x) //noinspect:CEG-016
+
+// Suppress entire file (on package declaration line)
+package main //noinspect:all
+```
+
+Suppressed occurrences are excluded from scoring and shown as a count in the report.
+
+---
+
+## CI/CD Integration
+
+```yaml
+# GitHub Actions example
+- name: Run cost analysis
+  run: |
+    go install github.com/alpardfm/go-cost-analyzer@latest
+    go-cost-analyzer -f json -t 70 -o cost-report.json .
+
+- name: Upload report
+  uses: actions/upload-artifact@v4
+  with:
+    name: cost-report
+    path: cost-report.json
+```
+
+---
+
+## How It Works
+
+1. **Scan** — Recursively discovers `.go` files, skipping vendor/, .git/, testdata/, generated files, and test files
+2. **Parse** — Parses each file into AST using `go/ast` and `go/parser`
+3. **Detect** — Runs all 20 pattern detectors (from [cost-efficient-go](https://github.com/alpardfm/cost-efficient-go) library) against each AST node
+4. **Filter** — Applies suppression comments to exclude intentional patterns
+5. **Score** — Calculates per-pattern and overall weighted scores
+6. **Report** — Outputs colored text or structured JSON with findings, scores, and impact estimates
+
+Processing is concurrent using a bounded worker pool (`NumCPU` workers) for fast analysis of large projects.
+
+---
+
+## Generated Files
+
+Files with the standard Go generated header are automatically skipped:
+
+```go
+// Code generated by protoc-gen-go. DO NOT EDIT.
+```
+
+---
+
+## Impact Estimation
+
+Each finding includes a heuristic impact estimate based on benchmark data from the [cost-efficient-go](https://github.com/alpardfm/cost-efficient-go) pattern library. Impact levels:
+
+- **High** — estimated savings > 10 MB at given scale
+- **Medium** — 1-10 MB
+- **Low** — < 1 MB
+
+Use `--scale` to project impact at different traffic levels (1M, 10M, 100M requests).
+
+> Disclaimer: Estimates are based on static analysis and benchmark heuristics. Actual savings depend on runtime behavior and deployment configuration.
+
+---
+
+## License
+
+MIT
