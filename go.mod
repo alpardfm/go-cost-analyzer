@@ -2,7 +2,10 @@ module github.com/alpardfm/go-cost-analyzer
 
 go 1.25.0
 
-require github.com/alpardfm/cost-efficient-go v0.0.0-20260528032912-293e8379e9bd
+require (
+	github.com/alpardfm/cost-efficient-go v0.0.0-20260528032912-293e8379e9bd
+	github.com/leanovate/gopter v0.2.11
+)
 
 require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
