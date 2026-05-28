@@ -182,6 +182,8 @@ Suppressed occurrences are excluded from scoring and shown as a count in the rep
 
 Each pattern's [reference documentation](https://github.com/alpardfm/cost-efficient-go/tree/main/patterns) includes a "When This Is Acceptable" section with detailed guidance.
 
+A template config file is available at [`.cost-analyzer.example.json`](.cost-analyzer.example.json) — copy it to your project root as `.cost-analyzer.json` and customize.
+
 ---
 
 ## CI/CD Integration

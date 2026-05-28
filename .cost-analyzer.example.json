@@ -1,0 +1,22 @@
+{
+  "exclude": [
+    "internal/generated",
+    "pkg/proto",
+    "migrations"
+  ],
+  "include_tests": false,
+  "disable_patterns": [],
+  "threshold": 70,
+  "format": "text",
+  "scale": "1M",
+  "suppress": [
+    {
+      "pattern": "CEG-004",
+      "paths": ["cmd/**", "internal/bootstrap/**"]
+    },
+    {
+      "pattern": "CEG-006",
+      "paths": ["internal/legacy/**"]
+    }
+  ]
+}
