@@ -1,0 +1,5 @@
+{
+  "disable_patterns": ["CEG-017"],
+  "threshold": 50,
+  "scale": "10M"
+}

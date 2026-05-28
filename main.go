@@ -135,6 +135,23 @@ func main() {
 		OutputFile:   output,
 	}
 
+	// Load project config file
+	projectConfig, err := LoadProjectConfig(rootPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		os.Exit(1)
+	}
+
+	// Merge project config (CLI flags take precedence)
+	MergeConfig(&config, projectConfig,
+		exclude != "",    // cliExcludeSet
+		patterns != "",   // cliPatternsSet
+		threshold != 0,   // cliThresholdSet
+		format != "text", // cliFormatSet (non-default means explicitly set)
+		scale != "1M",    // cliScaleSet
+		includeTests,     // cliIncludeTestsSet
+	)
+
 	// Create and run orchestrator
 	orch := NewOrchestrator(config)
 	report, err := orch.Run(context.Background())

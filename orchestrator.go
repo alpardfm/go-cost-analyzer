@@ -54,6 +54,22 @@ func NewOrchestrator(config AnalysisConfig) *Orchestrator {
 		filtered = allDetectors
 	}
 
+	// Filter out disabled patterns from config
+	if len(config.DisablePatterns) > 0 {
+		disableSet := make(map[string]bool, len(config.DisablePatterns))
+		for _, p := range config.DisablePatterns {
+			disableSet[p] = true
+		}
+		var kept []types.Detector
+		for _, d := range filtered {
+			rule := d.Rule()
+			if !disableSet[rule.ID] && !disableSet[rule.Name] {
+				kept = append(kept, d)
+			}
+		}
+		filtered = kept
+	}
+
 	detectors := make([]FileDetector, 0, len(filtered))
 	for _, d := range filtered {
 		detectors = append(detectors, NewFileDetector(d))
