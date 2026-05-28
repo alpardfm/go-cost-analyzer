@@ -95,6 +95,52 @@ go-cost-analyzer --scale 100M ./my-project
 
 ---
 
+## Configuration File
+
+Create a `.cost-analyzer.json` in your project root to configure the analyzer without passing flags every time:
+
+```json
+{
+  "exclude": ["internal/generated", "migrations", "pkg/proto"],
+  "include_tests": false,
+  "disable_patterns": ["CEG-010", "CEG-013"],
+  "enable_patterns": [],
+  "threshold": 70,
+  "format": "text",
+  "scale": "10M",
+  "suppress": [
+    {
+      "pattern": "CEG-006",
+      "paths": ["internal/legacy/**"]
+    },
+    {
+      "pattern": "CEG-018",
+      "paths": ["pkg/models/*"]
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `exclude` | string[] | Additional directories to skip from scanning |
+| `include_tests` | bool | Include `*_test.go` files in analysis |
+| `disable_patterns` | string[] | Pattern IDs to skip entirely |
+| `enable_patterns` | string[] | Only run these patterns (overrides disable) |
+| `threshold` | int | Minimum score — exit 1 if below |
+| `format` | string | Default output format (`"text"` or `"json"`) |
+| `scale` | string | Impact projection scale (`"1M"`, `"10M"`, `"100M"`) |
+| `suppress` | object[] | Suppress specific patterns in specific paths |
+
+**Precedence:** CLI flags always override config file values. The config file is optional — if absent, the tool runs with defaults.
+
+**Path glob patterns in `suppress`:**
+- `dir/**` — match all files recursively under `dir/`
+- `dir/*` — match files directly in `dir/` (not subdirectories)
+- `dir` — match anything under `dir/`
+
+---
+
 ## Scoring
 
 Each pattern gets a score (0-100) based on the ratio of optimal vs suboptimal occurrences found. The overall score is a weighted average:
