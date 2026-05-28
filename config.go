@@ -14,4 +14,5 @@ type AnalysisConfig struct {
 	IncludeTests    bool              // Whether to include *_test.go files
 	Scale           string            // Impact projection scale (e.g., "1M", "10M", "100M")
 	OutputFile      string            // Output file path (empty = stdout)
+	DiffBase        string            // Base branch for diff mode (empty = analyze all)
 }

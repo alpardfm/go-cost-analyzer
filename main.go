@@ -22,11 +22,13 @@ Flags:
       --exclude        Comma-separated additional dirs to exclude
       --include-tests  Include *_test.go files (default: false)
       --scale          Impact scale: "1M", "10M", "100M" (default: "1M")
+      --diff           Only analyze files changed vs this branch (e.g., main)
 
 Examples:
   go-cost-analyzer ./my-project
   go-cost-analyzer -f json -o report.json ./my-project
   go-cost-analyzer --threshold 80 --patterns slice-performance,sync-pool ./my-project
+  go-cost-analyzer --diff main ./my-project
 `
 
 func main() {
@@ -46,6 +48,7 @@ func main() {
 		exclude      string
 		includeTests bool
 		scale        string
+		diffBase     string
 	)
 
 	flag.StringVar(&output, "output", "", "Output file path")
@@ -61,6 +64,7 @@ func main() {
 	flag.StringVar(&exclude, "exclude", "", "Comma-separated additional dirs to exclude")
 	flag.BoolVar(&includeTests, "include-tests", false, "Include *_test.go files")
 	flag.StringVar(&scale, "scale", "1M", `Impact scale: "1M", "10M", "100M"`)
+	flag.StringVar(&diffBase, "diff", "", "Only analyze files changed vs this branch (e.g., main)")
 
 	flag.Usage = func() {
 		fmt.Print(usage)
@@ -133,6 +137,7 @@ func main() {
 		IncludeTests: includeTests,
 		Scale:        scale,
 		OutputFile:   output,
+		DiffBase:     diffBase,
 	}
 
 	// Load project config file

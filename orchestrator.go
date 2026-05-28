@@ -101,6 +101,33 @@ func (o *Orchestrator) Run(ctx context.Context) (*Report, error) {
 		return nil, err
 	}
 
+	// Apply diff filter if --diff is set
+	if o.config.DiffBase != "" {
+		changedFiles, err := GetChangedFiles(o.config.RootPath, o.config.DiffBase)
+		if err != nil {
+			return nil, err
+		}
+		// Filter: only keep files that are in the changed set
+		changedSet := make(map[string]bool, len(changedFiles))
+		for _, f := range changedFiles {
+			changedSet[f] = true
+		}
+		var filtered []string
+		for _, f := range files {
+			if changedSet[f] {
+				filtered = append(filtered, f)
+			}
+		}
+		files = filtered
+
+		if o.config.Verbose {
+			fmt.Fprintf(os.Stderr, "[verbose] Diff mode: %d changed .go files (vs %s)\n", len(files), o.config.DiffBase)
+		}
+	}
+
+	// Parse project dependencies for pattern applicability check
+	projectDeps := ParseGoModDependencies(o.config.RootPath)
+
 	if o.config.Verbose {
 		fmt.Fprintf(os.Stderr, "[verbose] Found %d Go files to analyze\n", len(files))
 	}
@@ -200,6 +227,15 @@ doneCollecting:
 		}
 
 		CalculatePatternScore(&pr)
+
+		// Check if pattern should be N/A due to missing dependencies
+		if !pr.NotApplicable && len(pr.Findings) == 0 && ShouldSkipPattern(rule.ID, projectDeps) {
+			pr.NotApplicable = true
+			pr.Score = 0
+			pr.TotalOccurrences = 0
+			pr.OptimalCount = 0
+			pr.SuboptimalCount = 0
+		}
 
 		// 6. Calculate impact for patterns with findings
 		if len(findings) > 0 {
